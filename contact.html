@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us – Parkit</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('5VBLJvSe0B55TN2vA');</script>
+</head>
+<body>
+
+<!-- ── NAVIGATION ── -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    Parkit
+  </div>
+  <div class="nav-tabs">
+    <a href="index.html"><button class="nav-tab">Find Parking</button></a>
+    <a href="bookings.html"><button class="nav-tab">My Bookings</button></a>
+    <a href="about.html"><button class="nav-tab">About Us</button></a>
+    <a href="contact.html"><button class="nav-tab active">Contact Us</button></a>
+  </div>
+  <div class="nav-actions">
+    <a href="auth.html"><button class="btn btn-outline btn-sm">Login</button></a>
+    <a href="auth.html#signup"><button class="btn btn-primary btn-sm">Sign Up</button></a>
+    <a href="admin-login.html"><button class="btn btn-sm" style="background:#fff3cd;color:#92400e;border:1px solid #ffc107">⚙️ Admin</button></a>
+  </div>
+</nav>
+
+<!-- ── CONTACT PAGE ── -->
+<div class="contact-page">
+
+  <!-- Hero -->
+  <div class="contact-hero">
+    <div style="font-size:2.5rem;margin-bottom:.5rem">📞</div>
+    <h2>Contact Us</h2>
+    <p>We're here to help! Reach out to us anytime for support, queries, or feedback about Parkit.</p>
+  </div>
+
+  <!-- Contact Cards -->
+  <div class="contact-cards">
+    <div class="contact-card">
+      <div class="contact-card-icon">📧</div>
+      <div class="contact-card-title">Email Us</div>
+      <div class="contact-card-value">
+        <a href="mailto:drashtisingh65@gmail.com">drashtisingh65@gmail.com</a>
+      </div>
+      <div class="contact-card-note">We reply within 24 hours</div>
+    </div>
+    <div class="contact-card">
+      <div class="contact-card-icon">📱</div>
+      <div class="contact-card-title">Call / WhatsApp</div>
+      <div class="contact-card-value">
+        <a href="tel:9277069770">+91 92770 69770</a>
+      </div>
+      <div class="contact-card-note">Mon – Sat, 9 AM – 7 PM</div>
+    </div>
+  </div>
+
+  <!-- Contact Form -->
+  <div class="contact-form-box">
+    <h3>✉️ Send us a Message</h3>
+
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input class="form-input" id="ct-name" type="text" placeholder="Enter your name">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input class="form-input" id="ct-email" type="email" placeholder="Enter your email">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Phone Number (optional)</label>
+      <input class="form-input" id="ct-phone" type="tel" placeholder="Enter your phone number">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Message</label>
+      <textarea id="ct-msg" placeholder="Describe your issue or query here…"></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="ct-send-btn"
+      style="width:100%;padding:12px;font-size:15px"
+      onclick="submitContact()">
+      📨 Send Message
+    </button>
+
+    <div class="contact-info-note">
+      💡 <strong>Quick tip:</strong> For booking-related issues, please include your
+      Booking ID in the message so we can assist you faster.
+    </div>
+  </div>
+
+</div><!-- /contact-page -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+  /* ── Validation helpers ── */
+  const V = {
+    email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+  };
+
+  function toast(msg, type = 'info') {
+    document.querySelector('.toast')?.remove();
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  async function submitContact() {
+    const name  = document.getElementById('ct-name').value.trim();
+    const email = document.getElementById('ct-email').value.trim();
+    const phone = document.getElementById('ct-phone').value.trim();
+    const msg   = document.getElementById('ct-msg').value.trim();
+
+    if (!name || !email || !msg) {
+      toast('Please fill in your name, email and message.', 'error');
+      return;
+    }
+    if (!V.email(email)) {
+      toast('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('ct-send-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Sending...';
+
+    try {
+      await emailjs.send('service_0iswtrf', 'template_ybgfsxb', {
+        from_name:  name,
+        from_email: email,
+        phone:      phone || 'Not provided',
+        message:    msg
+      });
+      toast("Message sent! We'll get back to you soon. 😊", 'success');
+      document.getElementById('ct-name').value  = '';
+      document.getElementById('ct-email').value = '';
+      document.getElementById('ct-phone').value = '';
+      document.getElementById('ct-msg').value   = '';
+    } catch (e) {
+      console.error('EmailJS error:', e);
+      const reason = e?.text || e?.message || JSON.stringify(e) || 'Unknown error';
+      toast('Error: ' + reason, 'error');
+    } finally {
+      btn.disabled  = false;
+      btn.innerHTML = '📨 Send Message';
+    }
+  }
+</script>
+
+</body>
+</html>
