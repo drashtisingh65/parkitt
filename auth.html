@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login / Sign Up – Parkit</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<!-- Firebase Compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- ── NAVIGATION ── -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    Parkit
+  </div>
+  <div class="nav-tabs">
+    <a href="index.html"><button class="nav-tab">Find Parking</button></a>
+    <a href="about.html"><button class="nav-tab">About Us</button></a>
+    <a href="contact.html"><button class="nav-tab">Contact Us</button></a>
+  </div>
+  <div class="nav-actions">
+    <a href="admin-login.html">
+      <button class="btn btn-sm" style="background:#fff3cd;color:#92400e;border:1px solid #ffc107">⚙️ Admin</button>
+    </a>
+  </div>
+</nav>
+
+<!-- ── AUTH CARD ── -->
+<div class="auth-card" style="padding-top:2rem">
+  <div class="auth-inner">
+
+    <!-- Logo + Title -->
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div class="logo-icon" style="margin:0 auto .75rem;width:44px;height:44px;font-size:20px">P</div>
+      <h2 id="auth-title">Welcome back</h2>
+      <p style="font-size:13px;color:var(--muted)">Smart Parking · Uttar Pradesh</p>
+    </div>
+
+    <!-- Login / Signup Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchMode('login')">Login</button>
+      <button class="auth-tab"        id="tab-signup" onclick="switchMode('signup')">Sign Up</button>
+    </div>
+
+    <!-- Sign Up only: Full Name -->
+    <div class="form-group" id="field-name" style="display:none">
+      <label class="form-label">Full Name *</label>
+      <input class="form-input" id="auth-name" type="text" placeholder="Your full name">
+      <div class="field-error" id="err-auth-name">Min. 2 characters</div>
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+      <label class="form-label">Email *</label>
+      <input class="form-input" id="auth-email" type="email" placeholder="you@example.com">
+      <div class="field-error" id="err-auth-email">Valid email required</div>
+    </div>
+
+    <!-- Sign Up only: Phone -->
+    <div class="form-group" id="field-phone" style="display:none">
+      <label class="form-label">Phone *</label>
+      <input class="form-input" id="auth-phone" type="tel" placeholder="10-digit mobile" maxlength="10">
+      <div class="field-error" id="err-auth-phone">Valid 10-digit phone</div>
+    </div>
+
+    <!-- Password -->
+    <div class="form-group">
+      <label class="form-label">Password *</label>
+      <input class="form-input" id="auth-pass" type="password" placeholder="Min. 6 characters">
+      <div class="field-error" id="err-auth-pass">Min. 6 characters</div>
+    </div>
+
+    <!-- Submit Button -->
+    <button class="btn btn-primary" id="auth-btn"
+      style="width:100%;padding:12px;margin-top:.5rem"
+      onclick="handleAuth()">
+      Login
+    </button>
+
+    <!-- Admin redirect -->
+    <div style="text-align:center;margin-top:1rem;font-size:12px;color:var(--muted)">
+      Parking manager? <a href="admin-login.html">Admin login →</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ── Firebase Init ── */
+firebase.initializeApp({
+  apiKey:            "AIzaSyD125N7kbyfdy5JC-flH85dGrClT7n0R1w",
+  authDomain:        "parkit-9e035.firebaseapp.com",
+  projectId:         "parkit-9e035",
+  storageBucket:     "parkit-9e035.firebasestorage.app",
+  messagingSenderId: "672621386685",
+  appId:             "1:672621386685:web:a7354d99eda5adb597d0d4"
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+/* ── State ── */
+let currentMode = 'login';
+
+/* ── Validation ── */
+const V = {
+  name:  v => v.trim().length >= 2,
+  phone: v => /^[6-9]\d{9}$/.test(v.trim()),
+  email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()),
+  pass:  v => v.length >= 6
+};
+
+/* ── Helpers ── */
+function $(id) { return document.getElementById(id); }
+function val(id) { return $(id)?.value.trim() || ''; }
+function passVal(id) { return $(id)?.value || ''; }
+
+function markErr(id, eid) {
+  $(id)?.classList.add('error');
+  $(eid)?.classList.add('show');
+}
+function clearAllErrors() {
+  ['auth-name','auth-email','auth-phone','auth-pass'].forEach(id => {
+    $(id)?.classList.remove('error');
+  });
+  ['err-auth-name','err-auth-email','err-auth-phone','err-auth-pass'].forEach(eid => {
+    $(eid)?.classList.remove('show');
+  });
+}
+
+function toast(msg, type = 'info') {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function fbErr(code) {
+  return ({
+    'auth/email-already-in-use': 'This email is already registered. Please login instead.',
+    'auth/invalid-email':        'Please enter a valid email address.',
+    'auth/weak-password':        'Password must be at least 6 characters.',
+    'auth/user-not-found':       'No account found with this email.',
+    'auth/wrong-password':       'Incorrect password. Please try again.',
+    'auth/invalid-credential':   'Invalid email or password.',
+    'auth/too-many-requests':    'Too many attempts. Please wait a moment.',
+  }[code] || 'Something went wrong (' + code + '). Please try again.');
+}
+
+/* ── Switch Login / Signup Mode ── */
+function switchMode(mode) {
+  currentMode = mode;
+  clearAllErrors();
+
+  // Tab highlighting
+  $('tab-login').classList.toggle('active',  mode === 'login');
+  $('tab-signup').classList.toggle('active', mode === 'signup');
+
+  // Show/hide signup-only fields
+  const show = mode === 'signup';
+  $('field-name').style.display  = show ? 'block' : 'none';
+  $('field-phone').style.display = show ? 'block' : 'none';
+
+  // Update heading and button label
+  $('auth-title').textContent = show ? 'Create account' : 'Welcome back';
+  $('auth-btn').textContent   = show ? 'Create Account' : 'Login';
+}
+
+/* ── Handle Auth ── */
+async function handleAuth() {
+  if (currentMode === 'login') {
+    await doLogin();
+  } else {
+    await doSignup();
+  }
+}
+
+/* ── Login ── */
+async function doLogin() {
+  clearAllErrors();
+  const email = val('auth-email');
+  const pass  = passVal('auth-pass');
+  if (!email) { markErr('auth-email', 'err-auth-email'); return; }
+  if (!pass)  { markErr('auth-pass',  'err-auth-pass');  return; }
+
+  const btn = $('auth-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Logging in…';
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    toast('Welcome back! 👋', 'success');
+    setTimeout(() => window.location.href = 'index.html', 800);
+  } catch (e) {
+    toast(fbErr(e.code), 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Login';
+  }
+}
+
+/* ── Sign Up ── */
+async function doSignup() {
+  clearAllErrors();
+  const name  = val('auth-name');
+  const email = val('auth-email');
+  const phone = val('auth-phone');
+  const pass  = passVal('auth-pass');
+
+  let ok = true;
+  if (!V.name(name))  { markErr('auth-name',  'err-auth-name');  ok = false; }
+  if (!V.email(email)){ markErr('auth-email', 'err-auth-email'); ok = false; }
+  if (!V.phone(phone)){ markErr('auth-phone', 'err-auth-phone'); ok = false; }
+  if (!V.pass(pass))  { markErr('auth-pass',  'err-auth-pass');  ok = false; }
+  if (!ok) { toast('Please fix the errors above', 'error'); return; }
+
+  const btn = $('auth-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Creating account…';
+
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await db.collection('users').doc(cred.user.uid).set({
+      name, email, phone, role: 'user',
+      createdAt: new Date().toISOString()
+    });
+    toast('Welcome, ' + name.split(' ')[0] + '! 🎉', 'success');
+    setTimeout(() => window.location.href = 'index.html', 800);
+  } catch (e) {
+    toast(fbErr(e.code), 'error');
+    btn.disabled    = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+/* ── Auto-detect #signup hash ── */
+if (window.location.hash === '#signup') {
+  switchMode('signup');
+}
+
+/* ── If already logged in, redirect ── */
+auth.onAuthStateChanged(user => {
+  if (user) window.location.href = 'index.html';
+});
+</script>
+
+</body>
+</html>
